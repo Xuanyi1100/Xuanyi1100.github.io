@@ -40,6 +40,18 @@
             margin-bottom: 20px;
             width: 500px; /* Increased width of the slider */
         }
+        input[type="range"]:focus {
+            outline: none;
+        }
+        .red-star {
+            color: red;
+        }
+        #hint {
+            display: none;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -49,12 +61,15 @@
         <!-- ASCII art will be inserted here -->
     </div>
     <input type="range" id="ascii-slider" style="display: none;" min="0" max="36" value="0" step="1">
+    <p id="hint">Use arrow keys or mouse wheel to navigate</p>
     
 
     <script>
         const showMapButton = document.getElementById('show-map-button');
         const mapContainer = document.getElementById('map-container');
         const asciiSlider = document.getElementById('ascii-slider');
+        const hint = document.getElementById('hint');
+        let journeyStarted = false;
 
         // ASCII arts
         const frames = [
@@ -792,7 +807,15 @@
         function updateAsciiArt() {
             const sliderValue = parseInt(asciiSlider.value);
             if (sliderValue >= 0 && sliderValue < frames.length) {
-                mapContainer.textContent = frames[sliderValue];
+                // Escape HTML entities first, then replace * with red span
+                // Color * when surrounded by spaces, | or line boundaries
+                // (not part of patterns like .-*' in Side Project art)
+                let content = frames[sliderValue]
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/(^|[ |])\*([ |]|$)/gm, '$1<span class="red-star">*</span>$2');
+                mapContainer.innerHTML = content;
             }
         }
 
@@ -802,11 +825,45 @@
             // Hide the button
             showMapButton.style.display = 'none';
             title.style.display = 'none';
-            // Show the slider
+            // Show the slider and hint
             asciiSlider.style.display = 'block';
+            hint.style.display = 'block';
+            journeyStarted = true;
+            // Focus the slider so arrow keys work immediately
+            asciiSlider.focus();
         });
 
         asciiSlider.addEventListener('input', updateAsciiArt);
+
+        // Document-level keyboard listener for arrow keys
+        document.addEventListener('keydown', function(e) {
+            if (!journeyStarted) return;
+
+            const currentValue = parseInt(asciiSlider.value);
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                asciiSlider.value = Math.min(currentValue + 1, parseInt(asciiSlider.max));
+                updateAsciiArt();
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                asciiSlider.value = Math.max(currentValue - 1, parseInt(asciiSlider.min));
+                updateAsciiArt();
+            }
+        });
+
+        // Mouse wheel listener for scrolling through frames
+        document.addEventListener('wheel', function(e) {
+            if (!journeyStarted) return;
+
+            e.preventDefault();
+            const currentValue = parseInt(asciiSlider.value);
+            if (e.deltaY > 0) {
+                asciiSlider.value = Math.min(currentValue + 1, parseInt(asciiSlider.max));
+            } else {
+                asciiSlider.value = Math.max(currentValue - 1, parseInt(asciiSlider.min));
+            }
+            updateAsciiArt();
+        }, { passive: false });
     </script>
 </body>
 </html>
